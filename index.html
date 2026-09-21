@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="icon" href="data:,">
+<title>ICS 课表预览</title>
+<style>
+:root{--ink:#182230;--muted:#657184;--line:#dce3ec;--bg:#f5f7fb;--accent:#3159c7;--odd:#fff4df;--even:#eaf4ff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+.wrap{max-width:1480px;margin:0 auto;padding:24px 22px 40px}
+header{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:18px}
+h1{font-size:28px;margin:0 0 7px}.sub{color:var(--muted);font-size:14px}
+.header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.header-actions .badge{white-space:nowrap}
+.action-link{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 13px;border:1px solid #3159c7;border-radius:999px;background:#3159c7;color:#fff;font-size:13px;font-weight:800;text-decoration:none;white-space:nowrap}
+.action-link:hover{filter:brightness(.96)}
+.action-link.secondary{background:#fff;color:#3159c7;border-color:#bfcaf1}
+.badge{padding:9px 13px;border-radius:999px;background:#e7edff;color:#2447a7;font-weight:700;white-space:nowrap}
+.weekbar{display:flex;gap:7px;overflow-x:auto;padding:8px 2px 14px}
+.weekbar button{border:1px solid var(--line);background:white;color:var(--ink);min-width:54px;height:40px;border-radius:10px;font-weight:700;cursor:pointer}
+.weekbar button.active{background:var(--accent);color:white;border-color:var(--accent)}
+.summary{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:2px 0 14px}
+.date-range{font-size:18px;font-weight:800}.parity{padding:5px 10px;border-radius:999px;font-size:13px;font-weight:800;background:var(--odd);color:#8a5100}
+.parity.even{background:var(--even);color:#245b9a}
+.grid{display:grid;grid-template-columns:92px repeat(7,minmax(135px,1fr));background:white;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 10px 28px rgba(35,49,72,.07)}
+.cell{border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-height:118px;padding:7px}
+.cell:nth-child(8n){border-right:0}.head{min-height:42px;background:#edf1f8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.time{background:#f7f9fc;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:12px;color:var(--muted);font-weight:700}
+.card{border-radius:10px;padding:8px;margin:0 0 6px;background:#eaf2ff;border-left:4px solid #4d78df;font-size:12px;line-height:1.45}
+.card.green{background:#ebf7ee;border-color:#46a766}.card.yellow{background:#fff7df;border-color:#d5a329}.card.red{background:#ffeded;border-color:#d96767}.card.cyan{background:#e7f7f9;border-color:#3da5b3}.card.purple{background:#f0edff;border-color:#7560c9}
+.card b{display:block;font-size:13px;margin-bottom:3px}.meta{color:#4e5d72}.empty{color:#b6bfcc;text-align:center;padding-top:31px;font-size:12px}
+.notes{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-top:18px}
+.panel{background:white;border:1px solid var(--line);border-radius:15px;padding:16px 18px;box-shadow:0 8px 24px rgba(35,49,72,.05)}
+.panel h2{font-size:17px;margin:0 0 12px}.rule{padding:10px 0;border-top:1px solid #edf0f5;font-size:13px;line-height:1.55}
+.rule:first-child{border-top:0}.rule strong{color:#2447a7}.warn{color:#a35c00;background:#fff8e9;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12px;line-height:1.6}
+@media(max-width:900px){.grid{grid-template-columns:70px repeat(7,155px);overflow-x:auto}.grid-shell{overflow-x:auto}.notes{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}}
+
+
+.importer{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.75fr);gap:14px;margin:14px 0 17px}
+.ics-dropzone{position:relative;display:flex;align-items:center;gap:14px;min-height:92px;padding:16px 18px;border:1.5px dashed #9bb1e8;border-radius:14px;background:linear-gradient(135deg,#f8faff,#eef4ff);cursor:pointer;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.ics-dropzone:hover,.ics-dropzone.dragover{border-color:#3159c7;background:linear-gradient(135deg,#eef3ff,#e1ebff);transform:translateY(-1px)}
+.ics-mark{display:flex;align-items:center;justify-content:center;width:48px;height:48px;flex:0 0 48px;border-radius:12px;background:#3159c7;color:#fff;font-size:12px;font-weight:900;letter-spacing:.5px;box-shadow:0 7px 18px rgba(49,89,199,.22)}
+.ics-drop-copy{min-width:0}.ics-drop-copy strong{display:block;font-size:15px;margin-bottom:4px}.ics-drop-copy span{display:block;color:#6a7689;font-size:12px;line-height:1.55}
+.import-side{display:flex;flex-direction:column;gap:9px;padding:14px 15px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.import-side label{display:flex;flex-direction:column;gap:5px;color:#657184;font-size:12px;font-weight:700}
+.import-side input[type=date]{height:38px;padding:0 10px;border:1px solid #cbd4e2;border-radius:9px;background:#fff;color:#182230}
+.import-actions{display:flex;gap:8px}.import-actions button{flex:1;min-height:36px;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer}
+.choose-ics{border:1px solid #3159c7;background:#3159c7;color:#fff}.reset-preview{border:1px solid #d4dbe7;background:#fff;color:#475569}
+.import-status{min-height:20px;color:#657184;font-size:12px;line-height:1.5}.import-status.error{color:#b42318}.import-status.ok{color:#18794e}
+@media(max-width:900px){.importer{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>ICS 课表预览</h1><div class="sub">导入自己的 .ics 文件后，可按周查看课程 · 时区：Asia/Shanghai</div></div>
+  <div class="header-actions">
+    <div class="badge">单双周已单独核对</div>
+    <a class="action-link secondary" href="./">返回文件转换助手</a>
+    <a id="downloadIcsLink" class="action-link" href="./files/2026-marketing-class1.ics" download>下载当前 ICS</a>
+  </div>
+</header>
+<section class="importer" aria-label="导入 ICS 课表">
+  <div id="icsDropZone" class="ics-dropzone" role="button" tabindex="0" aria-label="选择或拖入 ICS 文件">
+    <span class="ics-mark">ICS</span>
+    <div class="ics-drop-copy"><strong>把自己的 ICS 课表放入这里</strong><span>拖入文件，或点击此区域选择 .ics 文件。导入后可切换周次查看。</span></div>
+    <input id="icsFileInput" type="file" accept=".ics,text/calendar,text/plain" hidden>
+  </div>
+  <div class="import-side">
+    <label>第一周开始日期<input id="previewWeek1" type="date" value="2026-08-31"></label>
+    <div class="import-actions"><button id="chooseIcsButton" class="choose-ics" type="button">选择 ICS</button><button id="resetPreviewButton" class="reset-preview" type="button">恢复示例</button></div>
+    <div id="importStatus" class="import-status">当前显示内置示例</div>
+  </div>
+</section>
+<div class="weekbar" id="weekbar"></div>
+<div class="summary"><div class="date-range" id="range"></div><div class="parity" id="parity"></div></div>
+<div class="grid-shell"><div class="grid" id="grid"></div></div>
+<div class="notes">
+  <section class="panel"><h2>导入说明</h2>
+    <div class="rule">支持标准 ICS 的每周重复规则、单双周、截止日期和排除日期。</div>
+    <div class="rule">课程时间取自 ICS 的 DTSTART/DTEND；地点、教师和备注会显示在课程卡片中。</div>
+    <div class="rule">如果周次对不上，请调整“第一周开始日期”，页面会立即重新计算。</div>
+  </section>
+  <section class="panel"><h2>显示内容</h2>
+    <div class="rule">导入后可切换周次查看，每张卡片显示课程时间、地点和教师。</div>
+    <div class="rule">导入不会上传文件，解析和展示都在本机浏览器中完成。</div>
+    <div class="rule">固定文件：<a href="./files/2026-marketing-class1.ics">2026营销1班课表</a> · <a href="./files/2026-autumn-schedule.ics">2026秋季课表</a></div>
+  </section>
+</div>
+<script>
+window.__previewDefaultEvents = [{"id":"hydraulic-mon-56","title":"液压与气压传动","code":"A0615002","section":"02","day":"周一","periods":"第5-6节","start":"13:20","end":"15:00","weeks":[3,4,5,6,7,8,9,10],"weekRule":"第3-10周","teacher":"李文成[925117]","location":"3#楼818-819（多媒体）","classes":"化工B2615、化工B2616"},{"id":"sensor-mon-78","title":"传感器与测试技术","code":"A0615004","section":"02","day":"周一","periods":"第7-8节","start":"15:20","end":"17:00","weeks":[9,10,11,12,13,14,15,16],"weekRule":"第9-16周","teacher":"丛振[063002]","location":"2#楼420（多媒体）","classes":"化工B2615、化工B2616"},{"id":"cad-tue-12","title":"机械制图及CAD","code":"A0615001","section":"02","day":"周二","periods":"第1-2节","start":"08:00","end":"09:40","weeks":[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],"weekRule":"第3-18周","teacher":"李京彤[061008]","location":"3#楼317-318（多媒体）","classes":"化工B2615、化工B2616"},{"id":"cad-tue-34","title":"机械制图及CAD","code":"A0615001","section":"02","day":"周二","periods":"第3-4节","start":"10:10","end":"11:50","weeks":[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],"weekRule":"第3-18周","teacher":"李京彤[061008]","location":"3#楼101（多媒体技术实验室）","classes":"化工B2615、化工B2616"},{"id":"history-tue-56-odd","title":"中国近现代史纲要","code":"M4100016","section":"21","day":"周二","periods":"第5-6节","start":"13:20","end":"15:00","weeks":[3,5,7,9,11,13,15,17],"weekRule":"第3-17周（单周）","teacher":"冯云英[220005]","location":"3#楼阶702（多媒体）","classes":"化工B2615、化工B2614、化工B2613"},{"id":"policy-tue-78-odd","title":"形势与政策（一）","code":"M4100034","section":"19","day":"周二","periods":"第7-8节","start":"15:20","end":"17:00","weeks":[3,5,7,9],"weekRule":"第3-9周（单周）","teacher":"张艳霞[220046]","location":"3#楼404（多媒体）","classes":"化工B2613、化工B2614、化工B2615"},{"id":"cad-wed-12","title":"机械制图及CAD","code":"A0615001","section":"02","day":"周三","periods":"第1-2节","start":"08:00","end":"09:40","weeks":[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],"weekRule":"第3-18周","teacher":"李京彤[061008]","location":"2#楼315","classes":"化工B2615、化工B2616"},{"id":"english-wed-34","title":"通用英语基础（一）","code":"A4100056","section":"19","day":"周三","periods":"第3-4节","start":"10:10","end":"11:50","weeks":[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],"weekRule":"第3-18周","teacher":"赵丽萍[133027]","location":"1#楼416（多媒体）","classes":"化工B2615、化工B2616"},{"id":"electrical-thu-12","title":"电工电子技术","code":"A0615003","section":"02","day":"周四","periods":"第1-2节","start":"08:00","end":"09:40","weeks":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"weekRule":"第1-16周","teacher":"赵鹏[073024]","location":"3#楼916-917（多媒体）","classes":"化工B2615、化工B2616"},{"id":"electrical-thu-34-odd","title":"电工电子技术","code":"A0615003","section":"02","day":"周四","periods":"第3-4节","start":"10:10","end":"11:50","weeks":[3,5,7,9,11,13,15],"weekRule":"第3-15周（单周）","teacher":"赵鹏[073024]","location":"2#楼315（多媒体）","classes":"化工B2615、化工B2616"},{"id":"electrical-lab-thu-56-w11","title":"电工电子技术","code":"A0615003","section":"02S01","day":"周四","periods":"第5-6节","start":"13:20","end":"15:00","weeks":[11],"weekRule":"仅第11周","teacher":"赵鹏[073024]","location":"15#楼405（模拟电路实验室）","classes":"化工B2615"},{"id":"history-thu-78","title":"中国近现代史纲要","code":"M4100016","section":"21","day":"周四","periods":"第7-8节","start":"15:20","end":"17:00","weeks":[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],"weekRule":"第3-18周","teacher":"冯云英[220005]","location":"3#楼阶402（多媒体）","classes":"化工B2615、化工B2614、化工B2613"},{"id":"sensor-fri-12","title":"传感器与测试技术","code":"A0615004","section":"02","day":"周五","periods":"第1-2节","start":"08:00","end":"09:40","weeks":[9,10,11,12,13,14,15,16],"weekRule":"第9-16周","teacher":"丛振[063002]","location":"2#楼315（多媒体）","classes":"化工B2615、化工B2616"},{"id":"english-fri-34-even","title":"通用英语基础（一）","code":"A4100056","section":"19","day":"周五","periods":"第3-4节","start":"10:10","end":"11:50","weeks":[4,6,8,10,12,14,16,18],"weekRule":"第4-18周（双周）","teacher":"赵丽萍[133027]","location":"1#楼218（多媒体）","classes":"化工B2615、化工B2616"},{"id":"hydraulic-fri-78","title":"液压与气压传动","code":"A0615002","section":"02","day":"周五","periods":"第7-8节","start":"15:20","end":"17:00","weeks":[3,4,5,6,7,8,9,10],"weekRule":"第3-10周","teacher":"李文成[925117]","location":"2#楼415（多媒体）","classes":"化工B2615、化工B2616"},{"id":"survey-sat-12","title":"机器测绘","code":"A0615006","section":"02","day":"周六","periods":"第1-2节","start":"08:00","end":"09:40","weeks":[17,18],"weekRule":"第17-18周","teacher":"李京彤[061008]","location":"待定","classes":"化工B2615、化工B2616"},{"id":"training-sun-12","title":"机电测控电工电子综合实训","code":"A0615005","section":"02","day":"周日","periods":"第1-2节","start":"08:00","end":"09:40","weeks":[17,18],"weekRule":"第17-18周","teacher":"赵鹏[064003]","location":"待定","classes":"化工B2615、化工B2616"}];
+</script>
+<script src="./schedule-import.js"></script>
+</body></html>
